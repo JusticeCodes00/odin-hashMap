@@ -44,7 +44,7 @@ export default class LinkedList {
   }
 
   at(index) {
-    if (index <= -1) return;
+    if (index < 0 || index >= this.#size) return;
 
     let currentNode = this.#head;
     for (let i = 0; i < index; i++) {
@@ -56,10 +56,10 @@ export default class LinkedList {
 
   pop() {
     if (this.#head) {
-      const oldHead = this.#head;
-      this.#head = oldHead.nextNode;
+      const prevHead = this.#head;
+      this.#head = prevHead.nextNode;
       this.#size--;
-      return oldHead.value;
+      return prevHead.value;
     }
   }
 
@@ -78,11 +78,11 @@ export default class LinkedList {
 
   findIndex(cb) {
     let currentNode = this.#head;
-    let count = 0;
+    let pointer = 0;
     while (currentNode) {
-      if (cb(currentNode.value)) return count;
+      if (cb(currentNode.value)) return pointer;
       currentNode = currentNode.nextNode;
-      count++;
+      pointer++;
     }
     return -1;
   }
@@ -91,7 +91,7 @@ export default class LinkedList {
     let currentNode = this.#head;
     let str = "";
     while (currentNode) {
-      str += `(${currentNode.value}) –> `;
+      str += `(${currentNode.value}) -> `;
 
       if (!currentNode.nextNode) {
         str += "null";
@@ -103,18 +103,18 @@ export default class LinkedList {
   }
 
   forEach(cb) {
-    let current = this.#head;
+    let currentNode = this.#head;
     let index = 0;
-    while (current) {
-      cb(current.value, index);
-      current = current.nextNode;
+    while (currentNode) {
+      cb(currentNode.value, index);
+      currentNode = currentNode.nextNode;
       index++;
     }
   }
-  
+
   insertAt(index, ...values) {
     if (index < 0 || index > this.#size)
-      throw new RangeError("index is out of range");
+      throw new RangeError("Trying to access index out of bound");
 
     if (index === 0) {
       values.reverse().forEach((value) => {
@@ -131,7 +131,9 @@ export default class LinkedList {
     }
 
     let currentNode = this.#head;
-    for (let i = 0; i < index - 1; i++) {
+    const nodeBeforeTargetIndex = index - 1;
+
+    for (let i = 0; i < nodeBeforeTargetIndex; i++) {
       currentNode = currentNode.nextNode;
     }
 
@@ -139,35 +141,40 @@ export default class LinkedList {
       currentNode.nextNode = new Node(value, currentNode.nextNode);
       currentNode = currentNode.nextNode;
     });
+
     this.#size += values.length;
   }
 
   removeAt(index) {
     if (index < 0 || index >= this.#size)
-      throw new RangeError("index is out of range");
+      throw new RangeError("Trying to access index out of bound");
+
     if (index === 0) {
       this.pop();
-      if (this.#size === 0) {
-        this.#tail = null;
-      }
+      if (this.#size === 0) this.#tail = null;
       return;
     }
 
     let currentNode = this.#head;
-    for (let i = 0; i < index - 1; i++) {
+    const nodeBeforeTargetIndex = index - 1;
+
+    for (let i = 0; i < nodeBeforeTargetIndex; i++) {
       currentNode = currentNode.nextNode;
     }
 
-    // If there is a node after the node i want to remove
-    if (currentNode.nextNode.nextNode) {
-      currentNode.nextNode = currentNode.nextNode.nextNode; // Make that node the nextNode for the node before the one i want to remove
+    const targetNodeNextNode = currentNode.nextNode.nextNode;
+    if (targetNodeNextNode) {
+      currentNode.nextNode = targetNodeNextNode;
     } else {
       currentNode.nextNode = null;
     }
 
-    if (index === this.#size - 1) {
+    const lastNodeIndex = this.#size - 1;
+
+    if (index === lastNodeIndex) {
       this.#tail = currentNode;
     }
     this.#size--;
   }
 }
+
