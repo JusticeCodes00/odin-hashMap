@@ -1,143 +1,208 @@
 import LinkedList from "./LinkedList.js";
 
 export default class HashMap {
-    static HOW_MUCH_TO_GROW = 2;
+  static HOW_MUCH_TO_GROW = 2;
+  static BASE_CAPACITY = 16;
 
-    #bucket;
-    #capacity;
-    #loadFactor;
-    #entries = 0;
-    #currentKey = null;
+  #bucket;
+  #capacity;
+  #entries = 0;
+  #currentKey = null;
+  #loadFactor = 0.75;
 
-    constructor() {
-        this.#capacity = 16;
-        this.#bucket = new Array(this.#capacity)
-            .fill(null)
-            .map(() => new LinkedList());
-        this.#loadFactor = 0.75;
+  constructor() {
+    this.#capacity = HashMap.BASE_CAPACITY;
+    this.#bucket = this.#create();
+  }
+
+  #create() {
+    return new Array(this.#capacity).fill(null).map(() => new LinkedList());
+  }
+
+  #hash(key) {
+    if (typeof key !== "string") {
+      throw new Error("key must be of type String");
     }
 
-    #hash(key) {
-        if (typeof key !== "string") {
-            throw new Error("key must be of type String");
-        }
+    let hashCode = 0;
+    const primeNum = 31;
 
-        let hashCode = 0;
-        const primeNum = 31;
+    for (let i = 0; i < key.length; i++) {
+      hashCode = (primeNum * hashCode + key.charCodeAt(i)) % this.#capacity;
+    }
+    return hashCode;
+  }
 
-        for (let i = 0; i < key.length; i++) {
-            hashCode =
-                (primeNum * hashCode + key.charCodeAt(i)) % this.#capacity;
-        }
-        return hashCode;
+  #growBucket() {
+    this.#capacity = this.#capacity * HashMap.HOW_MUCH_TO_GROW;
+
+    const prevBucket = this.#bucket;
+
+    this.#bucket = this.#create();
+
+    this.#entries = 0;
+
+    for (let i = 0; i < prevBucket.length; i++) {
+      const current = prevBucket[i];
+      if (!current.size()) {
+        continue;
+      }
+
+      while (current.head()) {
+        const [[key, value]] = Object.entries(current.pop());
+        this.set(key, value);
+      }
+    }
+  }
+
+  #match = (container) => this.#currentKey in container;
+
+  set(key, value) {
+    this.#currentKey = key;
+    const grow = this.#entries >= this.#loadFactor * this.#capacity;
+
+    const bucketIndex = this.#hash(key);
+    const list = this.#bucket[bucketIndex];
+
+    if (list.contains(this.#match)) {
+      list.at(list.findIndex(this.#match))[key] = value;
+      return;
     }
 
-    #growBucket() {
-        this.#capacity = this.#capacity * HashMap.HOW_MUCH_TO_GROW;
-
-        const prevBucket = this.#bucket;
-
-        this.#bucket = new Array(this.#capacity)
-            .fill(null)
-            .map(() => new LinkedList());
-
-        for (let i = 0; i < prevBucket.length; i++) {
-            const current = prevBucket[i];
-            if (!current.size()) {
-                continue;
-            }
-
-            while (current.head()) {
-                const [[key, value]] = Object.entries(current.pop());
-                this.set(key, value);
-            }
-        }
-        for (let j = 0; j < this.#bucket.length; j++) {
-            console.log(this.#bucket[j].toString());
-        }
-        console.log("New Capacity: " + this.#capacity);
+    if (grow) {
+      this.#growBucket();
+      this.set(key, value);
+      return;
     }
 
-    #match = container => this.#currentKey in container;
+    list.append({ [key]: value });
 
-    set(key, value) {
-        this.#currentKey = key;
-        const timeToGrow = this.#entries >= this.#loadFactor * this.#capacity;
+    this.#entries++;
+  }
 
-        if (timeToGrow) {
-            console.log(
-                `Max entries exceeded(${this.#entries})\nGrowing bucket...`
-            );
-            this.#growBucket();
-        }
+  get(key) {
+    this.#currentKey = key;
+    const index = this.#hash(key);
+    let value = null;
 
-        const bucketIndex = this.#hash(key);
-        const list = this.#bucket[bucketIndex];
+    const list = this.#bucket[index];
 
-        if (list.contains(this.#match)) {
-            list.at(list.findIndex(this.#match))[key] = value;
-        }
+    const exist = list.contains(this.#match);
 
-        list.append({ [key]: value });
-
-        this.#entries++;
+    if (exist) {
+      value = list.at(list.findIndex(this.#match))[this.#currentKey];
     }
 
-    get(key) {
-        this.#currentKey = key;
-        const index = this.#hash(key);
-        let value = null;
+    return value;
+  }
 
-        const list = this.#bucket[index];
+  has(key) {
+    this.#currentKey = key;
 
-        const exist = list.contains(this.#match);
+    const index = this.#hash(key);
 
-        if (exist) {
-            value = list.at(list.findIndex(this.#match))[this.#currentKey];
-        }
+    const list = this.#bucket[index];
 
-        return value;
+    return list.contains(this.#match);
+  }
+
+  remove(key) {
+    this.#currentKey = key;
+    const index = this.#hash(key);
+    const list = this.#bucket[index];
+    let result = false;
+
+    if (list.contains(this.#match)) {
+      list.removeAt(list.findIndex(this.#match));
+      result = true;
+      this.#entries--;
     }
 
-    has(key) {
-        this.#currentKey = key;
+    return result;
+  }
 
-        const index = this.#hash(key);
+  length() {
+    console.log(this.#capacity);
+    return this.#entries;
+  }
 
-        const list = this.#bucket[index];
+  clear() {
+    this.#capacity = HashMap.BASE_CAPACITY;
+    this.#bucket = this.#create();
+    this.#entries = 0;
+    this.#currentKey = null;
+  }
 
-        return list.contains(this.#match);
+  keys() {
+    const keys = [];
+
+    for (let i = 0; i < this.#capacity; i++) {
+      const list = this.#bucket[i];
+
+      if (!list.head()) continue;
+
+      list.forEach((nodeValue) => {
+        keys.push(...Object.keys(nodeValue));
+      });
     }
+    return keys;
+  }
 
-    remove(key) {
-        this.#currentKey = key;
-        const index = this.#hash(key);
-        const list = this.#bucket[index];
-        let result = false;
+  values() {
+    const values = [];
 
-        if (list.contains(this.#match)) {
-            list.removeAt(list.findIndex(this.#match));
-            result = true;
-            this.#entries--;
-        }
+    for (let i = 0; i < this.#capacity; i++) {
+      const list = this.#bucket[i];
 
-        return result;
+      if (!list.head()) continue;
+
+      list.forEach((nodeValue) => {
+        values.push(...Object.values(nodeValue));
+      });
     }
+    return values;
+  }
 
-    length() {
-        return this.#entries;
+  entries() {
+    const entries = [];
+
+    for (let i = 0; i < this.#capacity; i++) {
+      const list = this.#bucket[i];
+
+      if (!list.head()) continue;
+
+      list.forEach((nodeValue) => {
+        entries.push(...Object.entries(nodeValue));
+      });
     }
+    return entries;
+  }
+
+  // Protected helper methods for subclasses
+  _checkAndGrow() {
+    const grow = this.#entries >= this.#loadFactor * this.#capacity;
+    if (grow) {
+      this.#growBucket();
+      return true;
+    }
+    return false;
+  }
+
+  _findBucketList(key) {
+    this.#currentKey = key;
+    const index = this.#hash(key);
+    return this.#bucket[index];
+  }
+
+  _keyExists(list) {
+    return list.contains(this.#match);
+  }
+
+  _getExistingNode(list) {
+    return list.at(list.findIndex(this.#match));
+  }
+
+  _incrementEntries() {
+    this.#entries++;
+  }
 }
-
-// Test bucket growth
-
-const map = new HashMap();
-
-console.log(map.set("ben", "Hello"));
-// for (let i = 0; i < 32; i++) {
-//     map.set(`ab${i}`, `${i}${i}${i}${i}`);
-// }
-
-console.log(map.remove("ben"));
-console.log(map.get("ben"));
-console.log(map.length());

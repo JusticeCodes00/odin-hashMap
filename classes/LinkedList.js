@@ -45,6 +45,7 @@ export default class LinkedList {
 
   at(index) {
     if (index <= -1) return;
+
     let currentNode = this.#head;
     for (let i = 0; i < index; i++) {
       currentNode = currentNode?.nextNode;
@@ -101,9 +102,19 @@ export default class LinkedList {
     return str;
   }
 
+  forEach(cb) {
+    let current = this.#head;
+    let index = 0;
+    while (current) {
+      cb(current.value, index);
+      current = current.nextNode;
+      index++;
+    }
+  }
+  
   insertAt(index, ...values) {
     if (index < 0 || index > this.#size)
-      throw RangeError("index is out of range");
+      throw new RangeError("index is out of range");
 
     if (index === 0) {
       values.reverse().forEach((value) => {
@@ -112,7 +123,7 @@ export default class LinkedList {
       return;
     }
 
-    if (index === this.#size - 1) {
+    if (index >= this.#size) {
       values.forEach((value) => {
         this.append(value);
       });
